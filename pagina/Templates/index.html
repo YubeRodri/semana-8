@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Pacientes en Espera</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding-top: 50px;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #34495e;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pacientes en Espera</h1>
+    <button onclick="startRecording()">Grabar y Transcribir</button>
+    <div id="result"></div>
+
+    <script>
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    const mediaRecorder = new MediaRecorder(stream);
+                    let audioChunks = [];
+
+                    mediaRecorder.ondataavailable = e => {
+                        audioChunks.push(e.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        const formData = new FormData();
+                        formData.append('audio', audioBlob, 'grabacion.wav');
+
+                        fetch('/transcribe', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            document.getElementById('result').innerText = data.text;
+                        })
+                        .catch(error => {
+                            document.getElementById('result').innerText = 'Error: ' + error;
+                        });
+                    };
+
+                    mediaRecorder.start();
+
+                    setTimeout(() => {
+                        mediaRecorder.stop();
+                    }, 5000); // Graba por 5 segundos
+                })
+                .catch(error => {
+                    alert('Permiso de micrófono denegado o no disponible.');
+                    console.error(error);
+                });
+        }
+    </script>
+</body>
+</html>
